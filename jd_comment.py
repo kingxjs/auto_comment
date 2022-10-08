@@ -24,10 +24,10 @@ try:
     from lxml import etree
 except:
     print('解决依赖问题...稍等')
-    os.system('pip3 install lxml &> /dev/null')
     os.system('pip3 install jieba &> /dev/null')
     os.system('pip3 install zhon &> /dev/null')
     os.system('pip3 install requests &> /dev/null')
+    os.system('pip3 install chardet==4.0.0  &> /dev/null')
     import jieba 
     import jieba.analyse
     #import yaml
