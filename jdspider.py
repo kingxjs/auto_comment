@@ -115,7 +115,7 @@ class JDSpider:
                 return None
             default_logger.warning("重新获取")
             self.retryCount += 1
-            time.sleep(random.randint(0, 3))
+            time.sleep(random.randint(15, 30))
             return self.getId()
         html = etree.HTML(response.text)
         return html.xpath('//li[@class="gl-item"]/@data-sku')
