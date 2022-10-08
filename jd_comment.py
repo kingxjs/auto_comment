@@ -24,10 +24,11 @@ try:
     from lxml import etree
 except:
     print('解决依赖问题...稍等')
+    os.system('pip3 install lxml &> /dev/null')
     os.system('pip3 install jieba &> /dev/null')
     os.system('pip3 install zhon &> /dev/null')
     os.system('pip3 install requests &> /dev/null')
-    os.system('pip3 install chardet==4.0.0  &> /dev/null')
+    os.system('pip3 install fake-useragent &> /dev/null')
     import jieba 
     import jieba.analyse
     #import yaml
@@ -483,7 +484,7 @@ def Service_rating(N, opts=None):
         if i + 1 > 10:
             opts['logger'].info(f'\t已评价10个订单，跳出')
             break
-        if len(Order.xpath('td[4]/div/a[1]/@oid')) > 0:
+        if len(Order.xpath('td[4]/div/a[1]/@oid'))>0:
             oname = Order.xpath('td[1]/div[1]/div[2]/div/a/text()')[0]
             oid = Order.xpath('td[4]/div/a[1]/@oid')[0]
             opts['logger'].info(f'\t开始第{i+1}个订单: {oid}')

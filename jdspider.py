@@ -6,6 +6,7 @@ import json
 import logging
 import random
 import re
+import os
 import sys
 import time
 from urllib.parse import quote, urlencode
@@ -13,6 +14,14 @@ from urllib.parse import quote, urlencode
 import requests
 import zhon.hanzi
 from lxml import etree
+
+try:
+    from fake_useragent import UserAgent
+except:
+    print('解决依赖问题...稍等')
+    os.system('pip3 install fake-useragent &> /dev/null')
+    from fake_useragent import UserAgent
+
 
 from Free_proxy_pool import proxy_pool
 from requests.adapters import HTTPAdapter
@@ -27,7 +36,6 @@ default_logger.setLevel(logging.DEBUG)
 default_logger.addHandler(log_console)
 
 
-
 class MyAdapter(HTTPAdapter):
     def init_poolmanager(self, connections, maxsize, block=False):
         self.poolmanager = PoolManager(num_pools=connections,
@@ -35,16 +43,27 @@ class MyAdapter(HTTPAdapter):
                                        block=block,
                                        ssl_version=ssl.PROTOCOL_TLSv1)
 
+
 class JDSpider:
     # 爬虫实现类：传入商品类别（如手机、电脑），构造实例。然后调用getData搜集数据。
     def __init__(self, categlory, ck):
+
+        self.UA = UserAgent(use_cache_server=False)
+        self.UserAgent = []
+        for i in range(20):  # 随机生成十个User-Agent
+            if i % 2 == 0:
+                self.UserAgent.append(self.UA.firefox)
+            else:
+                self.UserAgent.append(self.UA.chrome)
         self.proxy_pool = proxy_pool.Free_proxy_pool()
         self.proxy = None
-        self.retryMaxCount = 10
+        self.retryMaxCount = 20
         self.retryCount = 0
         # jD起始搜索页面
-        self.startUrl = "https://search.jd.com/Search?keyword=%s&enc=utf-8" % (
+        self.startUrl = "https://so.m.jd.com/ware/search.action?keyword=%s&searchFrom=home&sf=11&as=1" % (
             quote(categlory))
+        # self.startUrl = "https://search.jd.com/Search?keyword=%s&enc=utf-8" % (
+        #     quote(categlory))
         self.commentBaseUrl = "https://sclub.jd.com/comment/productPageComments.action?"
         self.headers = {
             'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
@@ -59,7 +78,7 @@ class JDSpider:
             'sec-fetch-site': 'none',
             'sec-fetch-user': '?1',
             'upgrade-insecure-requests': '1',
-            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36'
+            'user-agent': random.choice(self.UserAgent)
         }
         self.productsId = self.getId()
         self.comtype = {1: "差评", 2: "中评", 3: "好评"}
@@ -69,7 +88,7 @@ class JDSpider:
             'http': [],
             'https': []
         }
-    
+
     def getProxy(self):
         if self.proxy == None:
             self.proxy = self.proxy_pool.get_a_proxy()
@@ -91,35 +110,40 @@ class JDSpider:
 
     def getHeaders(self, productid):  # 和初始的self.header不同，这是搜集某个商品的header，加入了商品id，我也不知道去掉了会怎样。
         header = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36",
+            "User-Agent": random.choice(self.UserAgent),
             "Cookie": self.ck.encode("utf-8")
         }
         return header
 
     def getId(self):  # 获取商品id，为了得到具体商品页面的网址。结果保存在self.productId的数组里
+        try:
+            # 一开始的请求页面
+            session = requests.Session()
+            session.mount('https://', MyAdapter())
+            headers = self.headers
+            headers['user-agent'] = random.choice(self.UserAgent)
+            # 随机获取UA和代理IP
+            response = session.get(
+                self.startUrl, headers=self.headers, proxies=self.getProxy())
+            response.encoding = 'utf-8'
 
-        # 一开始的请求页面
-        session = requests.Session()
-        session.mount('https://', MyAdapter())
-
-        # 随机获取UA和代理IP
-        response = session.get(self.startUrl, headers=self.headers, proxies=self.getProxy())
-        response.encoding = 'utf-8'
-
-        # response = requests.get(self.startUrl, headers=self.headers)
-        if response.status_code != 200:
-            default_logger.warning("状态码错误，连接异常！")
-        if "window.location.href='https://passport.jd.com/new/login.aspx" in response.text:
-            if self.retryCount >= self.retryMaxCount:
-                default_logger.warning(f"已超出最大尝试次数，退出 {self.startUrl}")
-                return None
-            sleep = random.randint(15, 30)
-            default_logger.warning(f"触发预警，等待 {sleep}秒")
-            self.retryCount += 1
-            time.sleep(sleep)
-            return self.getId()
-        html = etree.HTML(response.text)
-        return html.xpath('//li[@class="gl-item"]/@data-sku')
+            # response = requests.get(self.startUrl, headers=self.headers)
+            if response.status_code != 200:
+                default_logger.warning("状态码错误，连接异常！")
+            if "window.location.href='https://passport.jd.com/new/login.aspx" in response.text:
+                if self.retryCount >= self.retryMaxCount:
+                    default_logger.warning(f"已超出最大尝试次数，退出 {self.startUrl}")
+                    return None
+                sleep = random.randint(5, 10)
+                default_logger.warning(f"触发预警，等待 {sleep}秒")
+                self.retryCount += 1
+                time.sleep(sleep)
+                return self.getId()
+            html = etree.HTML(response.text)
+            return html.xpath('//div[@class="search_prolist_item"]/@skuid')
+        except Exception as e:
+            default_logger.warning(e)
+        return None
 
     def getData(self, maxPage, score,):  # maxPage是搜集评论的最大页数，每页10条数据。差评和好评的最大一般页码不相同，一般情况下：好评>>差评>中评
         # maxPage遇到超出的页码会自动跳出，所以设大点也没有关系。
@@ -238,10 +262,11 @@ class JDSpider:
         logging.warning("数据已保存在 %s"%(savepath))
         '''
 
+
 # 测试用例
 if __name__ == "__main__":
     jdlist = [
         '笔筒台灯插座 手机支架多功能USB充电LED护眼灯遥控定时学生学习阅 读灯宿舍寝室卧室床头书桌台灯插排 笔筒台灯 4插位+2USB 1.8米（不带遥控）']
     for item in jdlist:
-        spider = JDSpider(item,'ck')
+        spider = JDSpider(item, '__jdu=16403287719711842161742; pinId=yMslOeksx2QqDCBqdx3rgw; shshshfpa=77facf6b-75fd-2695-b033-aa4b7338f0ca-1625041840; shshshfpb=vhBSZuWVvUYTQ6S9N9n8FEQ==; unick=一只小迷糊虫; _tp=OhZUpi+1u1GAOjBe/VKVeK9QQr8J8ju0+Ebq/BR4Jbs=; _pst=king学佳; mt_xid=V2_52007VwMVV1xaUVMZTxlUA2cDG1deWFVaGUwabFFjARtTCAxbRhtOGwwZYgAXVkFRU1pPVRsOUGcBFQJfCAVdGnkaXQZkHxNaQVtbSx9OElkCbAYRYl9oUmocTx9eB2QGGltcaFJTG04=; pin=king学佳; ceshi3.com=201; unpl=JF8EAKNnNSttChxUBxoAThdEQ1lUWwoBSx9Ta2ACVQgPS1NREgIfExl7XlVdXhRKHx9tZhRUWlNLUw4YAisSEHteVV1cDEweBmtnNWReWUoZBRoDdRBde15Ublw4SxAGbmUGXVteS1wDGwISFxNLWlRYWAt7JwNmZDVkbVl7VTUaMlp8EEpdUFtbDUJaA2hiBFZeUU1SBRMEGxIZTl5UWV0OThQzblcG; __jdv=209449046|kong|t_2020568451_|jingfen|cf1303d4e9514f819a5660df16e81508|1664525782294; areaId=1; PCSYCityID=CN_110000_110100_110108; ipLoc-djd=1-2800-55811-0; TrackID=1-AmSGkwoyofDtNQZfqz_kGymrCfCYawDLbkoevfpKl4dyCTWF5ufIS6GoG6upC7wGvbMapSdJd5dAdPbSdzQQuGKd4lsxyR3hbwUZK1aaLLsqXGiAuUs6rPhhRLbNM-4; jwotest_product=99; JSESSIONID=94BB22C565B8D01789146E29DF49FB38.s1; __jdc=122270672; shshshfp=849e9347f53cd0ca8756daee26494793; __jda=122270672.16403287719711842161742.1640328771.1665200353.1665208716.102; thor=22C97D522355C7CE92F2393BB1190960DC2E419392C14783DB787A93A820C69CFD1F55219831A057B3E1440C59497CE92C641626BDC551A21C5A704A3B3ABE092252B0C718CB48557A456A89CF7D9AF2CFA9E56522F2E7154C6BC5BDDD1C51C16B9DB19E601627AAA282295244BDF8E764BD894D7E31D82EECD5E7E1AC56E65F; 3AB9D23F7A4B3C9B=NJJ3IO3FWQH5W3B37XQ7F7FFOEKK7S7PDR6UE2A6Y656IUXDUFK5KLVC6QBUZJCGZCWO2GKJMRSK2LWOR655QNPPE4; __jdb=122270672.4.16403287719711842161742|102.1665208716')
         spider.getData(4, 3)
