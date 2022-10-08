@@ -111,7 +111,7 @@ class JDSpider:
             default_logger.warning("状态码错误，连接异常！")
         if "window.location.href='https://passport.jd.com/new/login.aspx" in response.text:
             if self.retryCount >= self.retryMaxCount:
-                default_logger.warning("已超出最大尝试次数，退出")
+                default_logger.warning(f"已超出最大尝试次数，退出 {self.startUrl}")
                 return None
             default_logger.warning("重新获取")
             self.retryCount += 1

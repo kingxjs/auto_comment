@@ -8,7 +8,7 @@ git pull
 echo -e "\033[32m <<<<<<<<<\n正在添加文件...\n>>>>>>>>> \033[0m"
 git add .
 
-git commit -am "提交token"
+git commit -am "提交"
 
 echo -e "\033[32m <<<<<<<<<\n正在提交代码...\n>>>>>>>>> \033[0m"
 git push
