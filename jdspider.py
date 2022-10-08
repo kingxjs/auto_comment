@@ -113,9 +113,10 @@ class JDSpider:
             if self.retryCount >= self.retryMaxCount:
                 default_logger.warning(f"已超出最大尝试次数，退出 {self.startUrl}")
                 return None
-            default_logger.warning("重新获取")
+            sleep = random.randint(15, 30)
+            default_logger.warning(f"触发预警，等待 {sleep}秒")
             self.retryCount += 1
-            time.sleep(random.randint(15, 30))
+            time.sleep(sleep)
             return self.getId()
         html = etree.HTML(response.text)
         return html.xpath('//li[@class="gl-item"]/@data-sku')
