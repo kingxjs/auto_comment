@@ -73,8 +73,10 @@ class Free_proxy_pool(object):
         self.__proxies_ok.clear()
 
     def __read_file(self):
-        with open(self.__datafile, 'r', encoding='utf-8')as fp:
-            return json.load(fp)
+        if os.path.exists(self.__datafile):
+            with open(self.__datafile, 'r', encoding='utf-8')as fp:
+                return json.load(fp)
+        return []
 
     def verify_Proxies(self, pro_set):
         output = []
