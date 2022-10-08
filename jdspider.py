@@ -14,6 +14,11 @@ import requests
 import zhon.hanzi
 from lxml import etree
 
+from Free_proxy_pool import proxy_pool
+from requests.adapters import HTTPAdapter
+
+from requests.packages.urllib3.poolmanager import PoolManager
+import ssl
 
 # Reference: https://github.com/fxsjy/jieba/blob/1e20c89b66f56c9301b0feed211733ffaa1bd72a/jieba/__init__.py#L27
 log_console = logging.StreamHandler(sys.stderr)
@@ -22,9 +27,21 @@ default_logger.setLevel(logging.DEBUG)
 default_logger.addHandler(log_console)
 
 
+
+class MyAdapter(HTTPAdapter):
+    def init_poolmanager(self, connections, maxsize, block=False):
+        self.poolmanager = PoolManager(num_pools=connections,
+                                       maxsize=maxsize,
+                                       block=block,
+                                       ssl_version=ssl.PROTOCOL_TLSv1)
+
 class JDSpider:
     # 爬虫实现类：传入商品类别（如手机、电脑），构造实例。然后调用getData搜集数据。
     def __init__(self, categlory, ck):
+        self.proxy_pool = proxy_pool.Free_proxy_pool()
+        self.proxy = None
+        self.retryMaxCount = 10
+        self.retryCount = 0
         # jD起始搜索页面
         self.startUrl = "https://search.jd.com/Search?keyword=%s&enc=utf-8" % (
             quote(categlory))
@@ -52,6 +69,11 @@ class JDSpider:
             'http': [],
             'https': []
         }
+    
+    def getProxy(self):
+        if self.proxy == None:
+            self.proxy = self.proxy_pool.get_a_proxy()
+        return self.proxy
 
     def getParamUrl(self, productid, page, score):
         params = {  # 用于控制页数，页面信息数的数据，非常重要，必不可少，要不然会被JD识别出来，爬不出相应的数据。
@@ -69,22 +91,40 @@ class JDSpider:
 
     def getHeaders(self, productid):  # 和初始的self.header不同，这是搜集某个商品的header，加入了商品id，我也不知道去掉了会怎样。
         header = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36",
-        "Cookie": self.ck.encode("utf-8")
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36",
+            "Cookie": self.ck.encode("utf-8")
         }
         return header
 
     def getId(self):  # 获取商品id，为了得到具体商品页面的网址。结果保存在self.productId的数组里
-        response = requests.get(self.startUrl, headers=self.headers)
+
+        # 一开始的请求页面
+        session = requests.Session()
+        session.mount('https://', MyAdapter())
+
+        # 随机获取UA和代理IP
+        response = session.get(self.startUrl, headers=self.headers, proxies=self.getProxy())
+        response.encoding = 'utf-8'
+
+        # response = requests.get(self.startUrl, headers=self.headers)
         if response.status_code != 200:
             default_logger.warning("状态码错误，连接异常！")
+        if "window.location.href='https://passport.jd.com/new/login.aspx" in response.text:
+            if self.retryCount >= self.retryMaxCount:
+                default_logger.warning("已超出最大尝试次数，退出")
+                return None
+            default_logger.warning("重新获取")
+            self.retryCount += 1
+            time.sleep(random.randint(0, 3))
+            return self.getId()
         html = etree.HTML(response.text)
         return html.xpath('//li[@class="gl-item"]/@data-sku')
 
     def getData(self, maxPage, score,):  # maxPage是搜集评论的最大页数，每页10条数据。差评和好评的最大一般页码不相同，一般情况下：好评>>差评>中评
         # maxPage遇到超出的页码会自动跳出，所以设大点也没有关系。
         # score是指那种评价类型，好评3、中评2、差评1。
-
+        if self.productsId == None:
+            return None
         comments = []
         scores = []
         if len(self.productsId) < 4:  # limit the sum of products
@@ -197,10 +237,10 @@ class JDSpider:
         logging.warning("数据已保存在 %s"%(savepath))
         '''
 
-
 # 测试用例
 if __name__ == "__main__":
-    jdlist = ['笔筒台灯插座 手机支架多功能USB充电LED护眼灯遥控定时学生学习阅 读灯宿舍寝室卧室床头书桌台灯插排 笔筒台灯 4插位+2USB 1.8米（不带遥控）']
+    jdlist = [
+        '笔筒台灯插座 手机支架多功能USB充电LED护眼灯遥控定时学生学习阅 读灯宿舍寝室卧室床头书桌台灯插排 笔筒台灯 4插位+2USB 1.8米（不带遥控）']
     for item in jdlist:
-        spider = JDSpider(item)
+        spider = JDSpider(item,'ck')
         spider.getData(4, 3)

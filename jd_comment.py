@@ -148,6 +148,10 @@ def generation(pname, _class=0, _type=1, opts=None):
         opts['logger'].debug('_class is 1. Directly return name')
         return name
     else:
+
+        if result == None:
+            return 5, None
+
         if _type == 1:
             num = 6
         elif _type == 0:
@@ -267,6 +271,9 @@ def sunbw(N, opts=None):
             opts['logger'].debug('pid: %s', pid)
             opts['logger'].debug('oid: %s', oid)
             xing, Str = generation(oname, opts=opts)
+            if Str == None:
+                opts['logger'].warning("未获得评论，稍后再试")
+                continue
             opts['logger'].info(f'评价信息：{xing}星  ' + Str)
             # 获取图片
             url1 = (f'https://club.jd.com/discussion/getProductPageImageCommentList'
@@ -400,6 +407,10 @@ def review(N, opts=None):
         opts['logger'].debug('oid: %s', oid)
         opts['logger'].info(f'\t开始第{i+1}个订单: {oid}')
         _, context = generation(oname, _type=0, opts=opts)
+        
+        if context == None:
+            opts['logger'].warning("未获得评论，稍后再试")
+            continue
         opts['logger'].info(f'追评内容：{context}')
         data1 = {
             'orderId': oid,
@@ -472,36 +483,39 @@ def Service_rating(N, opts=None):
         if i + 1 > 10:
             opts['logger'].info(f'\t已评价10个订单，跳出')
             break
-        oname = Order.xpath('td[1]/div[1]/div[2]/div/a/text()')[0]
-        oid = Order.xpath('td[4]/div/a[1]/@oid')[0]
-        opts['logger'].info(f'\t开始第{i+1}个订单: {oid}')
-        opts['logger'].debug('oid: %s', oid)
-        url1 = (f'https://club.jd.com/myJdcomments/insertRestSurvey.action'
-                f'?voteid=145&ruleid={oid}')
-        opts['logger'].debug('URL: %s', url1)
-        data1 = {
-            'oid': oid,
-            'gid': '32',
-            'sid': '186194',
-            'stid': '0',
-            'tags': '',
-            'ro591': f'591A{random.randint(4, 5)}',  # 商品符合度
-            'ro592': f'592A{random.randint(4, 5)}',  # 店家服务态度
-            'ro593': f'593A{random.randint(4, 5)}',  # 快递配送速度
-            'ro899': f'899A{random.randint(4, 5)}',  # 快递员服务
-            'ro900': f'900A{random.randint(4, 5)}'  # 快递员服务
-        }
-        opts['logger'].debug('Data: %s', data1)
-        if not opts.get('dry_run'):
-            opts['logger'].debug('Sending comment request')
-            pj1 = requests.post(url1, headers=headers, data=data1)
-            if pj1.ok:
-                opts['logger'].info(f'提交成功！')
+        if len(Order.xpath('td[4]/div/a[1]/@oid')) > 0:
+            oname = Order.xpath('td[1]/div[1]/div[2]/div/a/text()')[0]
+            oid = Order.xpath('td[4]/div/a[1]/@oid')[0]
+            opts['logger'].info(f'\t开始第{i+1}个订单: {oid}')
+            opts['logger'].debug('oid: %s', oid)
+            url1 = (f'https://club.jd.com/myJdcomments/insertRestSurvey.action'
+                    f'?voteid=145&ruleid={oid}')
+            opts['logger'].debug('URL: %s', url1)
+            data1 = {
+                'oid': oid,
+                'gid': '32',
+                'sid': '186194',
+                'stid': '0',
+                'tags': '',
+                'ro591': f'591A{random.randint(4, 5)}',  # 商品符合度
+                'ro592': f'592A{random.randint(4, 5)}',  # 店家服务态度
+                'ro593': f'593A{random.randint(4, 5)}',  # 快递配送速度
+                'ro899': f'899A{random.randint(4, 5)}',  # 快递员服务
+                'ro900': f'900A{random.randint(4, 5)}'  # 快递员服务
+            }
+            opts['logger'].debug('Data: %s', data1)
+            if not opts.get('dry_run'):
+                opts['logger'].debug('Sending comment request')
+                pj1 = requests.post(url1, headers=headers, data=data1)
+                if pj1.ok:
+                    opts['logger'].info(f'提交成功！')
+            else:
+                opts['logger'].debug('Skipped sending comment request in dry run')
+            #opts['logger'].info("\t " + pj1.text)
+            opts['logger'].debug('Sleep time (s): %.1f', SERVICE_RATING_SLEEP_SEC)
+            time.sleep(SERVICE_RATING_SLEEP_SEC)
         else:
-            opts['logger'].debug('Skipped sending comment request in dry run')
-        #opts['logger'].info("\t " + pj1.text)
-        opts['logger'].debug('Sleep time (s): %.1f', SERVICE_RATING_SLEEP_SEC)
-        time.sleep(SERVICE_RATING_SLEEP_SEC)
+            opts['logger'].info(f'\t开始第{i+1}个订单: 未找到订单id')
         N['服务评价'] -= 1
     return N
 
