@@ -154,7 +154,7 @@ def generation(pname, _class=0, _type=1, opts=None):
             return 5, None
 
         if _type == 1:
-            num = 6
+            num = 7
         elif _type == 0:
             num = 4
         num = min(num, len(result))
