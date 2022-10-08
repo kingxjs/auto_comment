@@ -91,11 +91,12 @@ class Free_proxy_pool(object):
                     if soup is None:         continue
                     try:
                         items = soup.select('.card-body p')
-                        if len(items)>0:
-                            print(items[0].text)
-                        else:
-                            print(soup.text)
+                        # if len(items)>0:
+                        #     print(items[0].text)
+                        # else:
+                        #     print(soup.text)
                     except Exception as ex:
+                        print(soup.text)
                         print(ex)
                     output.append(one_p)  # 把代理加入到.proxies_ok中去。
                     print('验证通过')
