@@ -22,7 +22,9 @@ except:
     os.system('pip3 install fake-useragent &> /dev/null')
     from fake_useragent import UserAgent
 
-
+current_file = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(current_file)
+    
 from Free_proxy_pool import proxy_pool
 from requests.adapters import HTTPAdapter
 
