@@ -9,13 +9,12 @@ echo -e "开始安装............\n"
 
 apk add --no-cache libxml2-dev libxslt-dev
 pip install -U --force-reinstall pip
-pip3 install -i https://pypi.tuna.tsinghua.edu.cn/simple/ jieba
-pip3 install -i https://pypi.tuna.tsinghua.edu.cn/simple/ zhon 
-pip3 install -i https://pypi.tuna.tsinghua.edu.cn/simple/ requests  
-pip3 install -i https://pypi.tuna.tsinghua.edu.cn/simple/ chardet==4.0.0   
-
-echo -e "\n安装 requirements.txt..."
-
-pip3 install -r requirements.txt
+pip3 install -i https://pypi.tuna.tsinghua.edu.cn/simple/ beautifulsoup4==4.11.1
+pip3 install -i https://pypi.tuna.tsinghua.edu.cn/simple/ chardet==4.0.0
+pip3 install -i https://pypi.tuna.tsinghua.edu.cn/simple/ fake_useragent==0.1.11
+pip3 install -i https://pypi.tuna.tsinghua.edu.cn/simple/ jieba==0.42.1
+pip3 install -i https://pypi.tuna.tsinghua.edu.cn/simple/ lxml==4.7.1
+pip3 install -i https://pypi.tuna.tsinghua.edu.cn/simple/ requests==2.26.0
+pip3 install -i https://pypi.tuna.tsinghua.edu.cn/simple/ zhon==1.1.5
 
 echo -e "\n所需依赖安装完成，请检查有没有报错，可尝试再次运行"
