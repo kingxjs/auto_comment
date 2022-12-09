@@ -14,8 +14,8 @@ pip3 install -i https://pypi.tuna.tsinghua.edu.cn/simple/ zhon
 pip3 install -i https://pypi.tuna.tsinghua.edu.cn/simple/ requests  
 pip3 install -i https://pypi.tuna.tsinghua.edu.cn/simple/ chardet==4.0.0   
 
-echo -e "\n安装 Free_proxy_pool 依赖..."
-cd ./Free_proxy_pool
+echo -e "\n安装 requirements.txt..."
+
 pip3 install -r requirements.txt
 
 echo -e "\n所需依赖安装完成，请检查有没有报错，可尝试再次运行"
